@@ -70,7 +70,7 @@ class AuthViewModel: NSObject, ViewModelable, ViewModelErrorHandling {
                 },
                 receiveValue: { [weak self] user in
                     self?.isLoggedIn = true
-                    // 保存用户登录状态
+                    // 保存用户登录状态 - AuthStateManager 会自动发送 Combine 事件
                     self?.authStateManager.login(user: user)
                     self?.log.info("User logged in successfully: \(user.email)")
                 }

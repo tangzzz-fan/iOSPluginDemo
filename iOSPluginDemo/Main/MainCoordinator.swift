@@ -7,6 +7,8 @@
 
 import UIKit
 import Swinject
+import SwiftyBeaver
+import Combine
 
 // MARK: - Main Coordinator
 class MainCoordinator: NSObject, Coordinator, CoordinatorLifecycle {
@@ -18,6 +20,7 @@ class MainCoordinator: NSObject, Coordinator, CoordinatorLifecycle {
     private let tabBarController: UITabBarController
     private var authCoordinator: AuthCoordinator?
     private let authStateManager = AuthStateManager.shared
+    private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Initialization
     init(navigationController: UINavigationController, container: Container) {
@@ -41,12 +44,13 @@ class MainCoordinator: NSObject, Coordinator, CoordinatorLifecycle {
     
     // MARK: - Setup
     private func setupNotifications() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleAuthComplete),
-            name: .authDidComplete,
-            object: nil
-        )
+        // 使用 Combine 监听认证事件
+        authStateManager.authEventPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                self?.handleAuthEvent(event)
+            }
+            .store(in: &cancellables)
     }
     
     private func checkAuthStatusAndShowLoginIfNeeded() {
@@ -78,16 +82,43 @@ class MainCoordinator: NSObject, Coordinator, CoordinatorLifecycle {
         navigationController.setNavigationBarHidden(true, animated: false)
     }
     
-    @objc private func handleAuthComplete() {
+    private func handleAuthEvent(_ event: AuthEvent) {
+        switch event {
+        case .loginSuccess(let user):
+            SwiftyBeaver.self.info("登录成功: \(user.email)，关闭认证界面")
+            handleLoginSuccess()
+            
+        case .logout:
+            SwiftyBeaver.self.info("用户退出登录，显示登录界面")
+            handleUserLogout()
+            
+        case .authRequired:
+            SwiftyBeaver.self.info("需要认证，显示登录界面")
+            showAuthFlow()
+            
+        case .loginFailed(let error):
+            SwiftyBeaver.self.error("登录失败: \(error.localizedDescription)")
+        }
+    }
+    
+    private func handleLoginSuccess() {
         // 移除认证协调器
-        if let authCoordinator = authCoordinator {
+        if let authCoordinator = self.authCoordinator {
             removeChildCoordinator(authCoordinator)
             self.authCoordinator = nil
         }
+        
         // 关闭登录模态界面
         tabBarController.dismiss(animated: true) {
             // 登录完成后可以在这里执行一些额外的操作
             // 比如刷新用户数据、更新UI等
+        }
+    }
+    
+    private func handleUserLogout() {
+        // 显示登录界面
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.showAuthFlow()
         }
     }
     

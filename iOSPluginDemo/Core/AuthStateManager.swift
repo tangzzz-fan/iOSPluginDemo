@@ -9,15 +9,31 @@ import Foundation
 import Combine
 import SwiftyBeaver
 
+// MARK: - Authentication Events
+enum AuthEvent {
+    case loginSuccess(User)
+    case loginFailed(Error)
+    case logout
+    case authRequired
+}
+
 // MARK: - Authentication State Manager
 class AuthStateManager: ObservableObject {
     
     // MARK: - Singleton
     static let shared = AuthStateManager()
     
-    // MARK: - Properties
+    // MARK: - Published Properties
     @Published var isAuthenticated: Bool = false
     @Published var currentUser: User?
+    
+    // MARK: - Combine Subjects
+    private let authEventSubject = PassthroughSubject<AuthEvent, Never>()
+    
+    // MARK: - Public Publishers
+    var authEventPublisher: AnyPublisher<AuthEvent, Never> {
+        authEventSubject.eraseToAnyPublisher()
+    }
     
     private let log = SwiftyBeaver.self
     private var cancellables = Set<AnyCancellable>()
@@ -52,6 +68,9 @@ class AuthStateManager: ObservableObject {
         self.currentUser = user
         self.isAuthenticated = true
         log.info("用户登录成功: \(user.email)")
+        
+        // 使用 Combine 发送登录成功事件
+        authEventSubject.send(.loginSuccess(user))
     }
     
     func logout() {
@@ -61,6 +80,9 @@ class AuthStateManager: ObservableObject {
         self.currentUser = nil
         self.isAuthenticated = false
         log.info("用户已登出")
+        
+        // 使用 Combine 发送登出事件
+        authEventSubject.send(.logout)
     }
     
     func isUserLoggedIn() -> Bool {
@@ -69,5 +91,10 @@ class AuthStateManager: ObservableObject {
     
     func getCurrentUser() -> User? {
         return currentUser
+    }
+    
+    // MARK: - Event Triggers
+    func requireAuthentication() {
+        authEventSubject.send(.authRequired)
     }
 } 

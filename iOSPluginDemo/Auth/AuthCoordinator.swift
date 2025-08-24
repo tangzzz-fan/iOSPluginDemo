@@ -48,8 +48,8 @@ class AuthCoordinator: NSObject, Coordinator, CoordinatorLifecycle, ModuleCoordi
     }
     
     func showMainApp() {
-        // 通知主协调器登录完成
-        NotificationCenter.default.post(name: .authDidComplete, object: nil)
+        // 这个方法不再需要发送通知，因为 AuthStateManager 使用 Combine 自动处理
+        // 保留这个方法以保持向后兼容，但不做任何操作
     }
     
     func dismissAuth() {
@@ -104,9 +104,4 @@ class RegistrationCoordinator: NSObject, Coordinator, CoordinatorLifecycle {
         childCoordinators.removeAll()
         navigationController.popViewController(animated: true)
     }
-}
-
-// MARK: - Notification Names
-extension Notification.Name {
-    static let authDidComplete = Notification.Name("authDidComplete")
 } 

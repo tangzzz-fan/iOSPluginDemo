@@ -21,8 +21,16 @@ class SettingsModule: Module {
     
     func registerDependencies(in container: Container) {
         // 注册 Settings 模块的依赖
-        container.register(SettingsViewController.self) { _ in
-            SettingsViewController()
+        
+        // 注册 Settings ViewModel
+        container.register(SettingsViewModel.self) { _ in
+            return SettingsViewModel()
+        }.inObjectScope(.transient)
+        
+        // 注册 Settings ViewController
+        container.register(SettingsViewController.self) { resolver in
+            let viewModel = resolver.resolve(SettingsViewModel.self)!
+            return SettingsViewController(viewModel: viewModel)
         }.inObjectScope(.transient)
         
         container.register(SettingsCoordinator.self) { resolver in

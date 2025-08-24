@@ -195,6 +195,9 @@ class AuthViewController: UIViewController, ViewControllable, ViewControllerHelp
         registerButton.topAnchor == forgotPasswordButton.bottomAnchor + 16
         registerButton.centerXAnchor == contentView.centerXAnchor
         registerButton.bottomAnchor == contentView.bottomAnchor - 40
+        
+        // 设置默认值方便测试
+        setupDefaultValues()
     }
     
     func bindViewModel() {
@@ -256,6 +259,17 @@ class AuthViewController: UIViewController, ViewControllable, ViewControllerHelp
             .store(in: &cancellables)
     }
     
+    // MARK: - Default Values Setup
+    private func setupDefaultValues() {
+        // 设置默认的测试账号和密码
+        emailTextField.text = "test@example.com"
+        passwordTextField.text = "password"
+        
+        // 通知 ViewModel 更新输入值
+        viewModel.email = "test@example.com"
+        viewModel.password = "password"
+    }
+    
     func setupNavigationBar() {
         configureNavigationBar(title: "登录", prefersLargeTitles: false, largeTitleDisplayMode: .never)
         
@@ -303,8 +317,8 @@ class AuthViewController: UIViewController, ViewControllable, ViewControllerHelp
     }
     
     private func handleLoginSuccess() {
-        guard let coordinator = findCoordinator() as? AuthCoordinator else { return }
-        coordinator.showMainApp()
+        // 在 MVVMC 架构中，通知已由 ViewModel 发送，这里只需要处理 UI 更新
+        // 可以在这里添加一些 UI 反馈，比如显示成功动画等
     }
     
     private func findCoordinator() -> Coordinator? {
