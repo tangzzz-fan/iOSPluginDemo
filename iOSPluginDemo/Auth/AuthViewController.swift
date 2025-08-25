@@ -263,11 +263,11 @@ class AuthViewController: UIViewController, ViewControllable, ViewControllerHelp
     private func setupDefaultValues() {
         // 设置默认的测试账号和密码
         emailTextField.text = "test@example.com"
-        passwordTextField.text = "password"
+        passwordTextField.text = "123456"
         
         // 通知 ViewModel 更新输入值
         viewModel.email = "test@example.com"
-        viewModel.password = "password"
+        viewModel.password = "123456"
     }
     
     func setupNavigationBar() {
