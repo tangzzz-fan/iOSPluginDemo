@@ -7,7 +7,6 @@
 
 import Foundation
 import Combine
-import SwiftyBeaver
 
 // MARK: - Auth View Model
 class AuthViewModel: NSObject, ViewModelable, ViewModelErrorHandling {
@@ -24,13 +23,18 @@ class AuthViewModel: NSObject, ViewModelable, ViewModelErrorHandling {
     
     // MARK: - Services
     private let authService: AuthServiceProtocol
-    private let authStateManager = AuthStateManager.shared
+    private let authStateManager: AuthStateManager
     
     // MARK: - Initialization
-    init(authService: AuthServiceProtocol) {
+    init(authService: AuthServiceProtocol, authStateManager: AuthStateManager) {
         self.authService = authService
+        self.authStateManager = authStateManager
         super.init()
         setupBindings()
+        
+        // 设置默认测试账号，提升用户体验
+        self.email = "test@example.com"
+        self.password = "123456"
     }
     
     // MARK: - Setup
@@ -59,7 +63,9 @@ class AuthViewModel: NSObject, ViewModelable, ViewModelErrorHandling {
         setLoading(true)
         clearError()
         
-        authService.login(email: email, password: password)
+        let credentials = LoginCredentials(email: email, password: password)
+        
+        authService.login(credentials: credentials)
             .receive(on: DispatchQueue.main)
             .sink(
                 receiveCompletion: { [weak self] completion in
@@ -100,139 +106,13 @@ class AuthViewModel: NSObject, ViewModelable, ViewModelErrorHandling {
     }
     
     func checkAuthStatus() {
-        authService.checkAuthStatus()
-            .receive(on: DispatchQueue.main)
-            .sink(
-                receiveCompletion: { [weak self] completion in
-                    if case .failure(let error) = completion {
-                        self?.isLoggedIn = false
-                        self?.log.warning("Auth status check failed: \(error)")
-                    }
-                },
-                receiveValue: { [weak self] user in
-                    self?.isLoggedIn = true
-                    // 更新认证状态管理器
-                    self?.authStateManager.login(user: user)
-                    self?.log.info("User is already logged in: \(user.email)")
-                }
-            )
-            .store(in: &cancellables)
-    }
-}
-
-// MARK: - User Model
-struct User: Codable {
-    let id: String
-    let email: String
-    let name: String
-    let avatarURL: String?
-    let createdAt: Date
-    
-    enum CodingKeys: String, CodingKey {
-        case id
-        case email
-        case name
-        case avatarURL = "avatar_url"
-        case createdAt = "created_at"
-    }
-}
-
-// MARK: - Auth Service Protocol
-protocol AuthServiceProtocol {
-    func login(email: String, password: String) -> AnyPublisher<User, Error>
-    func logout() -> AnyPublisher<Void, Error>
-    func checkAuthStatus() -> AnyPublisher<User, Error>
-    func forgotPassword(email: String) -> AnyPublisher<Void, Error>
-    func register(email: String, password: String, name: String) -> AnyPublisher<User, Error>
-}
-
-// MARK: - Auth Service Implementation
-class AuthService: AuthServiceProtocol {
-    private let log = SwiftyBeaver.self
-    
-    func login(email: String, password: String) -> AnyPublisher<User, Error> {
-        // 模拟网络请求
-        return Future { promise in
-            DispatchQueue.global().asyncAfter(deadline: .now() + 1.5) {
-                // 模拟验证逻辑
-                if email == "test@example.com" && password == "password" {
-                    let user = User(
-                        id: UUID().uuidString,
-                        email: email,
-                        name: "测试用户",
-                        avatarURL: nil,
-                        createdAt: Date()
-                    )
-                    promise(.success(user))
-                } else {
-                    promise(.failure(AuthError.invalidCredentials))
-                }
-            }
-        }
-        .eraseToAnyPublisher()
-    }
-    
-    func logout() -> AnyPublisher<Void, Error> {
-        return Future { promise in
-            DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
-                promise(.success(()))
-            }
-        }
-        .eraseToAnyPublisher()
-    }
-    
-    func checkAuthStatus() -> AnyPublisher<User, Error> {
-        return Future { promise in
-            // 检查本地存储的认证状态
-            // 这里简化处理，实际应该检查 token 等
-            promise(.failure(AuthError.notAuthenticated))
-        }
-        .eraseToAnyPublisher()
-    }
-    
-    func forgotPassword(email: String) -> AnyPublisher<Void, Error> {
-        return Future { promise in
-            DispatchQueue.global().asyncAfter(deadline: .now() + 1.0) {
-                promise(.success(()))
-            }
-        }
-        .eraseToAnyPublisher()
-    }
-    
-    func register(email: String, password: String, name: String) -> AnyPublisher<User, Error> {
-        return Future { promise in
-            DispatchQueue.global().asyncAfter(deadline: .now() + 1.5) {
-                let user = User(
-                    id: UUID().uuidString,
-                    email: email,
-                    name: name,
-                    avatarURL: nil,
-                    createdAt: Date()
-                )
-                promise(.success(user))
-            }
-        }
-        .eraseToAnyPublisher()
-    }
-}
-
-// MARK: - Auth Error
-enum AuthError: LocalizedError {
-    case invalidCredentials
-    case notAuthenticated
-    case networkError
-    case serverError
-    
-    var errorDescription: String? {
-        switch self {
-        case .invalidCredentials:
-            return "邮箱或密码错误"
-        case .notAuthenticated:
-            return "用户未登录"
-        case .networkError:
-            return "网络连接错误"
-        case .serverError:
-            return "服务器错误"
+        // 检查当前认证状态
+        if let currentUser = authStateManager.getCurrentUser() {
+            self.isLoggedIn = true
+            self.log.info("User is already logged in: \(currentUser.email)")
+        } else {
+            self.isLoggedIn = false
+            self.log.info("User is not logged in")
         }
     }
 } 

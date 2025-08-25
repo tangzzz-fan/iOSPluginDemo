@@ -2,155 +2,282 @@
 //  DIContainer.swift
 //  iOSPluginDemo
 //
-//  Created by 小苹果 on 2025/7/31.
+//  Created by 小苹果 on 2025/8/25.
 //
 
 import Foundation
 import Swinject
 import SwiftyBeaver
 
-// MARK: - DI Container Manager
+// MARK: - DIContainer Manager Protocol
 protocol DIContainerManager {
     var container: Container { get }
     func registerCoreDependencies()
     func registerModuleDependencies()
-    func resolve<T>(_ type: T.Type) -> T
-    func resolve<T>(_ type: T.Type, name: String?) -> T
+    func resolve<T>(_ type: T.Type) -> T?
 }
 
-class DIContainerManagerImpl: DIContainerManager {
+// MARK: - DIContainer Manager Implementation
+final class DIContainerManagerImpl: DIContainerManager {
     
     // MARK: - Properties
-    let container = Container()
-    private let log = SwiftyBeaver.self
+    private(set) var container = Container()
     
     // MARK: - Singleton
     static let shared = DIContainerManagerImpl()
     
     private init() {
-        registerCoreDependencies()
-        registerModuleDependencies()
+        setupDependencies()
     }
     
-    // MARK: - Core Dependencies
+    // MARK: - Setup
+    private func setupDependencies() {
+        AppLogger.di("设置依赖注入容器...")
+        registerCoreDependencies()
+        registerModuleDependencies()
+        AppLogger.di("依赖注入容器设置完成")
+    }
+    
+    // MARK: - Core Dependencies Registration
     func registerCoreDependencies() {
-        // 注册日志服务
-        container.register(SwiftyBeaver.Type.self) { _ in
-            SwiftyBeaver.self
-        }.inObjectScope(.container)
+        AppLogger.di("注册核心依赖...")
         
         // 注册认证状态管理器
         container.register(AuthStateManager.self) { _ in
             AuthStateManager.shared
         }.inObjectScope(.container)
         
-        // 注册 Coordinator Factory
-        container.register(CoordinatorFactory.self) { _ in
-            CoordinatorFactoryImpl()
+        // 注册协调器工厂
+        container.register(CoordinatorFactory.self) { resolver in
+            CoordinatorFactoryImpl(container: resolver as! Container)
         }.inObjectScope(.container)
         
-        // 注册 Module Factory
-        container.register(ModuleFactory.self) { _ in
-            ModuleFactoryImpl()
+        // 注册模块工厂
+        container.register(ModuleFactory.self) { resolver in
+            ModuleFactoryImpl(container: resolver as! Container)
         }.inObjectScope(.container)
         
-        log.info("Core dependencies registered")
+        // 注册生命周期管理器
+        container.register(CoordinatorLifecycleManager.self) { _ in
+            CoordinatorRegistry.shared
+        }.inObjectScope(.container)
     }
     
-    // MARK: - Module Dependencies
+    // MARK: - Module Dependencies Registration
     func registerModuleDependencies() {
-        // 注册各个模块
-        _ = HomeModule(container: container)
-        _ = ProfileModule(container: container)
-        _ = SettingsModule(container: container)
-        _ = AuthModule(container: container)
+        AppLogger.di("注册模块依赖...")
+        registerAuthModule()
+        registerHomeModule()
+        registerProfileModule()
+        registerSettingsModule()
+    }
+    
+    private func registerAuthModule() {
+        // 注册认证服务
+        container.register(AuthServiceProtocol.self) { resolver in
+            let authStateManager = resolver.resolve(AuthStateManager.self)!
+            return AuthService(authStateManager: authStateManager)
+        }.inObjectScope(.container)
         
-        // 注册 Home 服务
+        // 注册认证 ViewModel
+        container.register(AuthViewModel.self) { resolver in
+            let authService = resolver.resolve(AuthServiceProtocol.self)!
+            let authStateManager = resolver.resolve(AuthStateManager.self)!
+            return AuthViewModel(authService: authService, authStateManager: authStateManager)
+        }.inObjectScope(.transient)
+        
+        // 注册认证 ViewController
+        container.register(AuthViewController.self) { resolver in
+            let viewModel = resolver.resolve(AuthViewModel.self)!
+            return AuthViewController(viewModel: viewModel)
+        }.inObjectScope(.transient)
+    }
+    
+    private func registerHomeModule() {
+        // 注册首页服务
         container.register(HomeServiceProtocol.self) { _ in
             HomeService()
         }.inObjectScope(.container)
         
-        // 注册 HomeDetailViewController
-        container.register(HomeDetailViewController.self) { _ in
-            HomeDetailViewController()
+        // 注册首页 ViewModel
+        container.register(HomeViewModel.self) { resolver in
+            let homeService = resolver.resolve(HomeServiceProtocol.self)!
+            return HomeViewModel(homeService: homeService)
         }.inObjectScope(.transient)
         
-        // 注册 Auth 相关视图控制器
-        container.register(ForgotPasswordViewController.self) { _ in
-            ForgotPasswordViewController()
+        // 注册首页 ViewController
+        container.register(HomeViewController.self) { resolver in
+            let viewModel = resolver.resolve(HomeViewModel.self)!
+            return HomeViewController(viewModel: viewModel)
         }.inObjectScope(.transient)
-        
-        container.register(RegistrationViewController.self) { _ in
-            RegistrationViewController()
-        }.inObjectScope(.transient)
-        
-        log.info("Module dependencies registered")
     }
     
-    // MARK: - Resolution
-    func resolve<T>(_ type: T.Type) -> T {
-        guard let instance = container.resolve(type) else {
-            fatalError("Failed to resolve \(type)")
+    private func registerProfileModule() {
+        // 注册个人资料 ViewModel
+        container.register(ProfileViewModel.self) { resolver in
+            let authStateManager = resolver.resolve(AuthStateManager.self)!
+            return ProfileViewModel(authStateManager: authStateManager)
+        }.inObjectScope(.transient)
+        
+        // 注册个人资料 ViewController
+        container.register(ProfileViewController.self) { resolver in
+            let viewModel = resolver.resolve(ProfileViewModel.self)!
+            return ProfileViewController(viewModel: viewModel)
+        }.inObjectScope(.transient)
+    }
+    
+    private func registerSettingsModule() {
+        // 注册设置 ViewModel
+        container.register(SettingsViewModel.self) { _ in
+            return SettingsViewModel()
+        }.inObjectScope(.transient)
+        
+        // 注册设置 ViewController
+        container.register(SettingsViewController.self) { resolver in
+            let viewModel = resolver.resolve(SettingsViewModel.self)!
+            return SettingsViewController(viewModel: viewModel)
+        }.inObjectScope(.transient)
+    }
+    
+    // MARK: - Dependency Resolution
+    func resolve<T>(_ type: T.Type) -> T? {
+        return container.resolve(type)
+    }
+    
+    /// 安全解析依赖，检查是否正确注册
+    func resolveIfPresent<T>(_ type: T.Type, file: String = #file, line: Int = #line, function: String = #function) -> T? {
+        guard let resolved = container.resolve(type) else {
+            let typeName = String(describing: type)
+            let location = "\(URL(fileURLWithPath: file).lastPathComponent):\(line) in \(function)"
+            AppLogger.error("[DI] Failed to resolve dependency '\(typeName)' at \(location). Please check if it's properly registered.")
+            
+            // 记录当前已注册的服务类型以便调试
+            logRegisteredServices()
+            return nil
         }
-        return instance
+        
+        AppLogger.debug("[DI] Successfully resolved dependency '\(String(describing: type))'")
+        return resolved
     }
     
-    func resolve<T>(_ type: T.Type, name: String?) -> T {
-        guard let instance = container.resolve(type, name: name) else {
-            fatalError("Failed to resolve \(type) with name: \(name ?? "nil")")
+    /// 强制解析依赖，如果未注册则抛出错误
+    func resolveRequired<T>(_ type: T.Type, file: String = #file, line: Int = #line, function: String = #function) -> T {
+        guard let resolved = resolveIfPresent(type, file: file, line: line, function: function) else {
+            let typeName = String(describing: type)
+            let location = "\(URL(fileURLWithPath: file).lastPathComponent):\(line) in \(function)"
+            fatalError("[DI] Required dependency '\(typeName)' is not registered. Location: \(location)")
         }
-        return instance
+        return resolved
     }
     
-    /// 安全地解析可能不存在的依赖，返回可选值
-    /// - Parameter serviceType: 要解析的服务类型
-    /// - Returns: 解析成功的实例，如果不存在则返回 nil
-    public func resolveComponentIfPresent<T>(_ serviceType: T.Type) -> T? {
-        return container.resolve(serviceType)
-    }
-    
-    /// 安全地解析可能不存在的依赖（带名称），返回可选值
-    /// - Parameters:
-    ///   - serviceType: 要解析的服务类型
-    ///   - name: 服务名称
-    /// - Returns: 解析成功的实例，如果不存在则返回 nil
-    public func resolveComponentIfPresent<T>(_ serviceType: T.Type, name: String?) -> T? {
-        return container.resolve(serviceType, name: name)
+    /// 记录当前已注册的服务，用于调试
+    private func logRegisteredServices() {
+        AppLogger.debug("[DI] Currently registered services:")
+        AppLogger.debug("[DI] - AuthStateManager: \(container.resolve(AuthStateManager.self) != nil)")
+        AppLogger.debug("[DI] - AuthServiceProtocol: \(container.resolve(AuthServiceProtocol.self) != nil)")
+        AppLogger.debug("[DI] - CoordinatorFactory: \(container.resolve(CoordinatorFactory.self) != nil)")
+        AppLogger.debug("[DI] - ModuleFactory: \(container.resolve(ModuleFactory.self) != nil)")
+        AppLogger.debug("[DI] - HomeServiceProtocol: \(container.resolve(HomeServiceProtocol.self) != nil)")
     }
 }
 
 // MARK: - Coordinator Factory Implementation
 class CoordinatorFactoryImpl: CoordinatorFactory {
+    private let container: Container
+    
+    init(container: Container) {
+        self.container = container
+    }
+    
     func makeCoordinator(for type: CoordinatorType) -> Coordinator {
-        let container = DIContainerManagerImpl.shared.container
-        
         switch type {
         case .main:
-            return MainCoordinator(navigationController: UINavigationController(), container: container)
-        case .home:
-            return HomeCoordinator(navigationController: UINavigationController(), container: container)
-        case .profile:
-            return ProfileCoordinator(navigationController: UINavigationController(), container: container)
+            let tabBarController = UITabBarController()
+            return MainCoordinator(tabBarController: tabBarController, container: container)
+            
         case .auth:
-            return AuthCoordinator(navigationController: UINavigationController(), container: container)
+            let navigationController = UINavigationController()
+            return AuthCoordinator(navigationController: navigationController, container: container)
+            
+        case .home:
+            let navigationController = UINavigationController()
+            return HomeCoordinator(navigationController: navigationController, container: container)
+            
+        case .profile:
+            let navigationController = UINavigationController()
+            return ProfileCoordinator(navigationController: navigationController, container: container)
         }
+    }
+    
+    func makeAuthCoordinator() -> AuthCoordinator {
+        let navigationController = UINavigationController()
+        return AuthCoordinator(navigationController: navigationController, container: container)
+    }
+    
+    func makeMainCoordinator() -> MainCoordinator {
+        let tabBarController = UITabBarController()
+        return MainCoordinator(tabBarController: tabBarController, container: container)
     }
 }
 
 // MARK: - Module Factory Implementation
 class ModuleFactoryImpl: ModuleFactory {
+    private let container: Container
+    
+    init(container: Container) {
+        self.container = container
+    }
+    
     func createModule(for type: ModuleType) -> Module {
-        let container = DIContainerManagerImpl.shared.container
-        
         switch type {
+        case .auth:
+            return AuthModule(container: container)
         case .home:
             return HomeModule(container: container)
         case .profile:
             return ProfileModule(container: container)
         case .settings:
             return SettingsModule(container: container)
-        case .auth:
-            return AuthModule(container: container)
         }
     }
-} 
+}
+
+// MARK: - Container Extension for Safe Resolution
+extension Container {
+    
+    /// 安全解析扩展方法
+    func safeResolve<Service>(_ serviceType: Service.Type, file: String = #file, line: Int = #line, function: String = #function) -> Service? {
+        return DIContainerManagerImpl.shared.resolveIfPresent(serviceType, file: file, line: line, function: function)
+    }
+    
+    /// 必需解析扩展方法
+    func requiredResolve<Service>(_ serviceType: Service.Type, file: String = #file, line: Int = #line, function: String = #function) -> Service {
+        return DIContainerManagerImpl.shared.resolveRequired(serviceType, file: file, line: line, function: function)
+    }
+}
+
+// MARK: - Resolver Extension for Safe Resolution
+extension Resolver {
+    
+    /// 安全解析扩展方法
+    func safeResolve<Service>(_ serviceType: Service.Type, file: String = #file, line: Int = #line, function: String = #function) -> Service? {
+        guard let resolved = resolve(serviceType) else {
+            let typeName = String(describing: serviceType)
+            let location = "\(URL(fileURLWithPath: file).lastPathComponent):\(line) in \(function)"
+            AppLogger.error("[DI] Failed to resolve dependency '\(typeName)' at \(location). Please check if it's properly registered.")
+            return nil
+        }
+        AppLogger.debug("[DI] Successfully resolved dependency '\(String(describing: serviceType))'")
+        return resolved
+    }
+    
+    /// 必需解析扩展方法
+    func requiredResolve<Service>(_ serviceType: Service.Type, file: String = #file, line: Int = #line, function: String = #function) -> Service {
+        guard let resolved = safeResolve(serviceType, file: file, line: line, function: function) else {
+            let typeName = String(describing: serviceType)
+            let location = "\(URL(fileURLWithPath: file).lastPathComponent):\(line) in \(function)"
+            fatalError("[DI] Required dependency '\(typeName)' is not registered. Location: \(location)")
+        }
+        return resolved
+    }
+}

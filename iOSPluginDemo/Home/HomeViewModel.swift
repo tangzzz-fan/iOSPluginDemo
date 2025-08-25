@@ -23,7 +23,7 @@ class HomeViewModel: NSObject, ViewModelable, ViewModelErrorHandling {
     private let homeService: HomeServiceProtocol
     
     // MARK: - Initialization
-    init(homeService: HomeServiceProtocol = HomeService()) {
+    init(homeService: HomeServiceProtocol) {
         self.homeService = homeService
         super.init()
         setupBindings()
@@ -45,7 +45,7 @@ class HomeViewModel: NSObject, ViewModelable, ViewModelErrorHandling {
         setLoading(true)
         clearError()
         
-        homeService.fetchHomeData()
+        homeService.fetchHomeItems()
             .receive(on: DispatchQueue.main)
             .sink(
                 receiveCompletion: { [weak self] completion in
@@ -68,38 +68,5 @@ class HomeViewModel: NSObject, ViewModelable, ViewModelErrorHandling {
     func selectItem(_ item: HomeItem) {
         log.info("Selected item: \(item.title)")
         // 处理项目选择逻辑
-    }
-}
-
-// MARK: - Home Item Model
-struct HomeItem: Identifiable {
-    let id = UUID()
-    let title: String
-    let subtitle: String
-    let imageURL: String?
-}
-
-// MARK: - Home Service Protocol
-protocol HomeServiceProtocol {
-    func fetchHomeData() -> AnyPublisher<[HomeItem], Error>
-}
-
-// MARK: - Home Service Implementation
-class HomeService: HomeServiceProtocol {
-    private let log = SwiftyBeaver.self
-    
-    func fetchHomeData() -> AnyPublisher<[HomeItem], Error> {
-        // 模拟网络请求
-        return Future { promise in
-            DispatchQueue.global().asyncAfter(deadline: .now() + 1.0) {
-                let items = [
-                    HomeItem(title: "项目 1", subtitle: "这是第一个项目", imageURL: nil),
-                    HomeItem(title: "项目 2", subtitle: "这是第二个项目", imageURL: nil),
-                    HomeItem(title: "项目 3", subtitle: "这是第三个项目", imageURL: nil)
-                ]
-                promise(.success(items))
-            }
-        }
-        .eraseToAnyPublisher()
     }
 } 

@@ -10,7 +10,7 @@ import Combine
 import SwiftyBeaver
 
 // MARK: - View Model Protocol
-protocol ViewModelable: ObservableObject {
+protocol ViewModelable: ObservableObject, Loggable {
     var cancellables: Set<AnyCancellable> { get set }
     var isLoading: Bool { get set }
     var errorMessage: String? { get set }
@@ -53,10 +53,5 @@ extension ViewModelable {
     
     func setLoading(_ loading: Bool) {
         isLoading = loading
-    }
-    
-    // MARK: - Logging
-    var log: SwiftyBeaver.Type {
-        return SwiftyBeaver.self
     }
 } 

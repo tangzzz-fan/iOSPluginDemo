@@ -13,30 +13,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // 初始化日志系统
-        setupLogging()
+        AppLogger.configure()
+        AppLogger.info("App launched")
         
         // 初始化依赖注入容器
         _ = DIContainerManagerImpl.shared
+        AppLogger.info("依赖注入容器初始化成功")
         
         // 验证架构
-//        ArchitectureValidator.validate()
+        // ArchitectureValidator.validate()
         
         return true
     }
     
-    // MARK: - Setup Methods
-    private func setupLogging() {
-        let console = ConsoleDestination()
-        console.format = "$DHH:mm:ss$d $L $N.$F:$l - $M"
-        SwiftyBeaver.addDestination(console)
-        
-        let file = FileDestination()
-        file.format = "$DHH:mm:ss$d $L $N.$F:$l - $M"
-        SwiftyBeaver.addDestination(file)
-        
-        SwiftyBeaver.info("App launched")
-    }
-
     // MARK: UISceneSession Lifecycle
 
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {

@@ -22,8 +22,9 @@ class HomeModule: Module {
     
     func registerDependencies(in container: Container) {
         // 注册 Home 模块的依赖
-        container.register(HomeViewModel.self) { _ in
-            HomeViewModel()
+        container.register(HomeViewModel.self) { resolver in
+            let homeService = resolver.resolve(HomeServiceProtocol.self)!
+            return HomeViewModel(homeService: homeService)
         }.inObjectScope(.transient)
         
         container.register(HomeViewController.self) { resolver in

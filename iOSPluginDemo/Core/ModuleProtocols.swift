@@ -51,7 +51,7 @@ enum ViewControllerType {
 
 // MARK: - Module View Model Factory
 protocol ModuleViewModelFactory {
-    func makeViewModel(for type: ViewModelType) -> ViewModelable
+    func makeViewModel(for type: ViewModelType) -> any ViewModelable
 }
 
 enum ViewModelType {

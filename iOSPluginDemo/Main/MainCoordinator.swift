@@ -11,15 +11,19 @@ import SwiftyBeaver
 import Combine
 
 // MARK: - Main Coordinator
-class MainCoordinator: NSObject, Coordinator, CoordinatorLifecycle {
+class MainCoordinator: NSObject, Coordinator, CoordinatorLifecycle, CoordinatorLifecycleManager {
     
     // MARK: - Properties
     var childCoordinators: [Coordinator] = []
     var navigationController: UINavigationController
     private let container: Container
     private let tabBarController: UITabBarController
-    private var authCoordinator: AuthCoordinator?
     private let authStateManager = AuthStateManager.shared
+    
+    // MARK: - Coordinator Lifecycle Manager Properties
+    var coordinatorStore: [String: Coordinator] = [:]
+    
+    // MARK: - Combine Properties
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Initialization
@@ -31,6 +35,15 @@ class MainCoordinator: NSObject, Coordinator, CoordinatorLifecycle {
         setupNotifications()
     }
     
+    init(tabBarController: UITabBarController, container: Container) {
+        self.navigationController = UINavigationController()
+        self.container = container
+        self.tabBarController = tabBarController
+        super.init()
+        setupNotifications()
+    }
+    
+    
     // MARK: - Coordinator
     func start() {
         // 默认显示主应用，然后根据登录状态决定是否需要弹出登录模块
@@ -39,6 +52,7 @@ class MainCoordinator: NSObject, Coordinator, CoordinatorLifecycle {
     }
     
     func finish() {
+        cleanupCoordinators()
         childCoordinators.removeAll()
     }
     
@@ -64,14 +78,20 @@ class MainCoordinator: NSObject, Coordinator, CoordinatorLifecycle {
     }
     
     private func showAuthFlow() {
-        // 创建模态展示的认证协调器
-        let authNavigationController = UINavigationController()
-        authCoordinator = AuthCoordinator(navigationController: authNavigationController, container: container)
-        addChildCoordinator(authCoordinator!)
-        authCoordinator?.start()
+        // 使用改进的生命周期管理创建认证协调器
+        let authCoordinator = createCoordinator(
+            type: AuthCoordinator.self,
+            identifier: "auth"
+        ) {
+            let authNavigationController = UINavigationController()
+            return AuthCoordinator(navigationController: authNavigationController, container: self.container)
+        }
+        
+        addChildCoordinator(authCoordinator)
+        authCoordinator.start()
         
         // 模态展示登录界面
-        tabBarController.present(authNavigationController, animated: true)
+        tabBarController.present(authCoordinator.navigationController, animated: true)
     }
     
     private func showMainApp() {
@@ -103,9 +123,9 @@ class MainCoordinator: NSObject, Coordinator, CoordinatorLifecycle {
     
     private func handleLoginSuccess() {
         // 移除认证协调器
-        if let authCoordinator = self.authCoordinator {
+        if let authCoordinator = getCoordinator(type: AuthCoordinator.self, identifier: "auth") {
             removeChildCoordinator(authCoordinator)
-            self.authCoordinator = nil
+            removeCoordinator(identifier: "auth")
         }
         
         // 关闭登录模态界面
@@ -153,5 +173,108 @@ class MainCoordinator: NSObject, Coordinator, CoordinatorLifecycle {
         ]
         
         tabBarController.selectedIndex = 0
+    }
+}
+
+// MARK: - Enhanced Coordinator Lifecycle Management
+extension MainCoordinator {
+    
+    func createCoordinator<T: Coordinator>(
+        type: T.Type,
+        identifier: String,
+        factory: () -> T
+    ) -> T {
+        // 检查是否已存在同一标识符的 Coordinator
+        if let existingCoordinator = coordinatorStore[identifier] as? T {
+            SwiftyBeaver.warning("重用已存在的协调器: \(identifier)")
+            return existingCoordinator
+        }
+        
+        // 创建新的 Coordinator
+        let coordinator = factory()
+        coordinatorStore[identifier] = coordinator
+        
+        SwiftyBeaver.info("创建新协调器: \(identifier)")
+        return coordinator
+    }
+    
+    func getCoordinator<T: Coordinator>(type: T.Type, identifier: String) -> T? {
+        return coordinatorStore[identifier] as? T
+    }
+    
+    func removeCoordinator(identifier: String) {
+        if let coordinator = coordinatorStore[identifier] {
+            coordinator.finish()
+            coordinatorStore.removeValue(forKey: identifier)
+            SwiftyBeaver.info("移除协调器: \(identifier)")
+        }
+    }
+    
+    func cleanupCoordinators() {
+        SwiftyBeaver.info("清理所有子协调器")
+        
+        for (identifier, coordinator) in coordinatorStore {
+            coordinator.finish()
+            SwiftyBeaver.info("清理协调器: \(identifier)")
+        }
+        
+        coordinatorStore.removeAll()
+        cancellables.removeAll()
+    }
+}
+
+// MARK: - CoordinatorLifecycleManager Protocol Implementation
+extension MainCoordinator {
+    
+    func createCoordinator<T: Coordinator>(_ type: T.Type, with container: Container) -> T {
+        // 根据类型创建对应的 Coordinator
+        switch type {
+        case is AuthCoordinator.Type:
+            let navigationController = UINavigationController()
+            return AuthCoordinator(navigationController: navigationController, container: container) as! T
+            
+        case is HomeCoordinator.Type:
+            let navigationController = UINavigationController()
+            return HomeCoordinator(navigationController: navigationController, container: container) as! T
+            
+        case is ProfileCoordinator.Type:
+            let navigationController = UINavigationController()
+            return ProfileCoordinator(navigationController: navigationController, container: container) as! T
+            
+        case is SettingsCoordinator.Type:
+            let navigationController = UINavigationController()
+            return SettingsCoordinator(navigationController: navigationController, container: container) as! T
+            
+        default:
+            fatalError("Unsupported coordinator type: \(type)")
+        }
+    }
+    
+    func retainCoordinator(_ coordinator: Coordinator) {
+        // 添加到子协调器列表
+        if !childCoordinators.contains(where: { ObjectIdentifier($0) == ObjectIdentifier(coordinator) }) {
+            childCoordinators.append(coordinator)
+            SwiftyBeaver.info("Retained coordinator: \(type(of: coordinator))")
+        }
+    }
+    
+    func releaseCoordinator(_ coordinator: Coordinator) {
+        // 从子协调器列表中移除
+        childCoordinators.removeAll { ObjectIdentifier($0) == ObjectIdentifier(coordinator) }
+        SwiftyBeaver.info("Released coordinator: \(type(of: coordinator))")
+    }
+    
+    func cleanupAllCoordinators() {
+        // 清理所有子协调器
+        cleanupCoordinators()
+        childCoordinators.removeAll()
+    }
+    
+    func getActiveCoordinators() -> [Coordinator] {
+        return childCoordinators
+    }
+    
+    func isCoordinatorActive(_ coordinator: Coordinator) -> Bool {
+        return childCoordinators.contains { ObjectIdentifier($0) == ObjectIdentifier(coordinator) }
     }
 } 

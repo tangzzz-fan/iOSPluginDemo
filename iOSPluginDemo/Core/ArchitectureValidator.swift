@@ -55,14 +55,16 @@ class ArchitectureValidator {
         log.info("Validating Coordinators...")
         
         let container = DIContainerManagerImpl.shared.container
-        let coordinatorFactory = container.resolve(CoordinatorFactory.self)!
         
-        // 验证所有协调器类型
-        let coordinatorTypes: [CoordinatorType] = [.main, .home, .profile]
+        // 验证协调器工厂
+        let coordinatorFactory = container.resolve(CoordinatorFactory.self)
+        log.info("CoordinatorFactory resolved: \(coordinatorFactory != nil)")
         
-        for coordinatorType in coordinatorTypes {
-            let coordinator = coordinatorFactory.makeCoordinator(for: coordinatorType)
-            log.info("Coordinator for type \(coordinatorType) created successfully")
-        }
+        // 验证具体的协调器实例
+        let mainCoordinator = container.resolve(MainCoordinator.self)
+        log.info("MainCoordinator resolved: \(mainCoordinator != nil)")
+        
+        let authCoordinator = container.resolve(AuthCoordinator.self)
+        log.info("AuthCoordinator resolved: \(authCoordinator != nil)")
     }
 } 

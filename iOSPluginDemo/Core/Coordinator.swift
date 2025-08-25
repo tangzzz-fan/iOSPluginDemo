@@ -38,11 +38,6 @@ extension CoordinatorLifecycle where Self: Coordinator {
     }
 }
 
-// MARK: - Coordinator Factory
-protocol CoordinatorFactory {
-    func makeCoordinator(for type: CoordinatorType) -> Coordinator
-}
-
 enum CoordinatorType {
     case main
     case home

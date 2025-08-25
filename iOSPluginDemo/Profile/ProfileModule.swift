@@ -21,8 +21,9 @@ class ProfileModule: Module {
     
     func registerDependencies(in container: Container) {
         // 注册 Profile 模块的依赖
-        container.register(ProfileViewController.self) { _ in
-            ProfileViewController()
+        container.register(ProfileViewController.self) { resolver in
+            let viewModel = resolver.resolve(ProfileViewModel.self)!
+            return ProfileViewController(viewModel: viewModel)
         }.inObjectScope(.transient)
         
         container.register(ProfileCoordinator.self) { resolver in
