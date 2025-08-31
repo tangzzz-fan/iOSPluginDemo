@@ -22,6 +22,7 @@ protocol ModuleFactory {
 
 enum ModuleType: String, CaseIterable {
     case home = "Home"
+    case demo = "Demo"
     case profile = "Profile"
     case settings = "Settings"
     case auth = "Auth"
@@ -41,6 +42,8 @@ protocol ModuleViewControllerFactory {
 
 enum ViewControllerType {
     case home
+    case demo
+    case longScreenshotDemo
     case profile
     case settings
     case auth
@@ -56,7 +59,10 @@ protocol ModuleViewModelFactory {
 
 enum ViewModelType {
     case home
+    case demo
+    case longScreenshotDemo
     case profile
     case settings
+    case auth
     // 添加更多视图模型类型
 } 

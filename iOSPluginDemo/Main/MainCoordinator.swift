@@ -145,29 +145,35 @@ class MainCoordinator: NSObject, Coordinator, CoordinatorLifecycle, CoordinatorL
     // MARK: - Tab Bar Setup
     private func setupTabBarController() {
         let homeCoordinator = HomeCoordinator(navigationController: UINavigationController(), container: container)
+        let demoCoordinator = DemoCoordinator(navigationController: UINavigationController(), container: container)
         let profileCoordinator = ProfileCoordinator(navigationController: UINavigationController(), container: container)
         let settingsCoordinator = SettingsCoordinator(navigationController: UINavigationController(), container: container)
         
         // 添加子协调器
         addChildCoordinator(homeCoordinator)
+        addChildCoordinator(demoCoordinator)
         addChildCoordinator(profileCoordinator)
         addChildCoordinator(settingsCoordinator)
         
         // 设置标签栏项目
         homeCoordinator.start()
+        demoCoordinator.start()
         profileCoordinator.start()
         settingsCoordinator.start()
         
         let homeTab = UITabBarItem(title: "首页", image: UIImage(systemName: "house"), selectedImage: UIImage(systemName: "house.fill"))
+        let demoTab = UITabBarItem(title: "演示", image: UIImage(systemName: "play.rectangle"), selectedImage: UIImage(systemName: "play.rectangle.fill"))
         let profileTab = UITabBarItem(title: "个人", image: UIImage(systemName: "person"), selectedImage: UIImage(systemName: "person.fill"))
         let settingsTab = UITabBarItem(title: "设置", image: UIImage(systemName: "gear"), selectedImage: UIImage(systemName: "gear"))
         
         homeCoordinator.navigationController.tabBarItem = homeTab
+        demoCoordinator.navigationController.tabBarItem = demoTab
         profileCoordinator.navigationController.tabBarItem = profileTab
         settingsCoordinator.navigationController.tabBarItem = settingsTab
         
         tabBarController.viewControllers = [
             homeCoordinator.navigationController,
+            demoCoordinator.navigationController,
             profileCoordinator.navigationController,
             settingsCoordinator.navigationController
         ]
@@ -244,6 +250,10 @@ extension MainCoordinator {
         case is SettingsCoordinator.Type:
             let navigationController = UINavigationController()
             return SettingsCoordinator(navigationController: navigationController, container: container) as! T
+            
+        case is DemoCoordinator.Type:
+            let navigationController = UINavigationController()
+            return DemoCoordinator(navigationController: navigationController, container: container) as! T
             
         default:
             fatalError("Unsupported coordinator type: \(type)")

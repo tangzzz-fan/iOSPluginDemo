@@ -68,6 +68,7 @@ final class DIContainerManagerImpl: DIContainerManager {
         AppLogger.di("注册模块依赖...")
         registerAuthModule()
         registerHomeModule()
+        registerDemoModule()
         registerProfileModule()
         registerSettingsModule()
     }
@@ -109,6 +110,36 @@ final class DIContainerManagerImpl: DIContainerManager {
         container.register(HomeViewController.self) { resolver in
             let viewModel = resolver.resolve(HomeViewModel.self)!
             return HomeViewController(viewModel: viewModel)
+        }.inObjectScope(.transient)
+    }
+    
+    private func registerDemoModule() {
+        // 注册截图服务
+        container.register(ScreenshotGenerating.self) { _ in
+            ScreenshotGenerator()
+        }.inObjectScope(.container)
+        
+        // 注册Demo ViewModel
+        container.register(DemoListViewModel.self) { _ in
+            return DemoListViewModel()
+        }.inObjectScope(.transient)
+        
+        // 注册长截图演示ViewModel
+        container.register(LongScreenshotDemoViewModel.self) { resolver in
+            let screenshotService = resolver.resolve(ScreenshotGenerating.self)!
+            return LongScreenshotDemoViewModel(screenshotService: screenshotService)
+        }.inObjectScope(.transient)
+        
+        // 注册Demo ViewController
+        container.register(DemoListViewController.self) { resolver in
+            let viewModel = resolver.resolve(DemoListViewModel.self)!
+            return DemoListViewController(viewModel: viewModel)
+        }.inObjectScope(.transient)
+        
+        // 注册长截图演示ViewController
+        container.register(LongScreenshotDemoViewController.self) { resolver in
+            let viewModel = resolver.resolve(LongScreenshotDemoViewModel.self)!
+            return LongScreenshotDemoViewController(viewModel: viewModel)
         }.inObjectScope(.transient)
     }
     
@@ -234,6 +265,8 @@ class ModuleFactoryImpl: ModuleFactory {
             return AuthModule(container: container)
         case .home:
             return HomeModule(container: container)
+        case .demo:
+            return DemoModule(container: container)
         case .profile:
             return ProfileModule(container: container)
         case .settings:

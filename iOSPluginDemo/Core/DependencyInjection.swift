@@ -99,9 +99,10 @@ final class AppContainer: DependencyContainer {
         
         registerAuthModule()
         registerMainModule()
-        registerSettingsModule()
         registerHomeModule()
+        registerDemoModule()
         registerProfileModule()
+        registerSettingsModule()
     }
     
     private func registerAuthModule() {
@@ -150,6 +151,28 @@ final class AppContainer: DependencyContainer {
         dependencyGraph.addNode("HomeViewModel", dependencies: ["HomeService"])
     }
     
+    private func registerDemoModule() {
+        // 注册截图服务
+        container.register(ScreenshotGenerating.self) { _ in
+            return ScreenshotGenerator()
+        }.inObjectScope(.container)
+        
+        // 注册 Demo ViewModel
+        container.register(DemoListViewModel.self) { _ in
+            return DemoListViewModel()
+        }.inObjectScope(.transient)
+        
+        // 注册长截图演示ViewModel
+        container.register(LongScreenshotDemoViewModel.self) { resolver in
+            let screenshotService = resolver.resolve(ScreenshotGenerating.self)!
+            return LongScreenshotDemoViewModel(screenshotService: screenshotService)
+        }.inObjectScope(.transient)
+        
+        dependencyGraph.addNode("ScreenshotService", dependencies: [])
+        dependencyGraph.addNode("DemoListViewModel", dependencies: [])
+        dependencyGraph.addNode("LongScreenshotDemoViewModel", dependencies: ["ScreenshotService"])
+    }
+    
     private func registerProfileModule() {
         // 注册 Profile ViewModel
         container.register(ProfileViewModel.self) { resolver in
@@ -185,10 +208,22 @@ final class AppContainer: DependencyContainer {
             return ProfileViewController(viewModel: viewModel)
         }.inObjectScope(.transient)
         
+        container.register(DemoListViewController.self) { resolver in
+            let viewModel = resolver.resolve(DemoListViewModel.self)!
+            return DemoListViewController(viewModel: viewModel)
+        }.inObjectScope(.transient)
+        
+        container.register(LongScreenshotDemoViewController.self) { resolver in
+            let viewModel = resolver.resolve(LongScreenshotDemoViewModel.self)!
+            return LongScreenshotDemoViewController(viewModel: viewModel)
+        }.inObjectScope(.transient)
+        
         dependencyGraph.addNode("AuthViewController", dependencies: ["AuthViewModel"])
         dependencyGraph.addNode("SettingsViewController", dependencies: ["SettingsViewModel"])
         dependencyGraph.addNode("HomeViewController", dependencies: ["HomeViewModel"])
         dependencyGraph.addNode("ProfileViewController", dependencies: ["ProfileViewModel"])
+        dependencyGraph.addNode("DemoListViewController", dependencies: ["DemoListViewModel"])
+        dependencyGraph.addNode("LongScreenshotDemoViewController", dependencies: ["LongScreenshotDemoViewModel"])
     }
     
     // MARK: - Dependency Validation
