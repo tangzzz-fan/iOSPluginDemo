@@ -7,17 +7,16 @@
 
 import Foundation
 import Combine
-import SwiftyBeaver
 
 // MARK: - Home Service Protocol
-protocol HomeServiceProtocol {
+protocol HomeServiceProtocol: Loggable {
     func fetchHomeItems() -> AnyPublisher<[HomeItem], HomeError>
     func fetchItemDetail(id: String) -> AnyPublisher<HomeItem, HomeError>
     func refreshData() -> AnyPublisher<[HomeItem], HomeError>
 }
 
 // MARK: - Home Service Implementation
-class HomeService: HomeServiceProtocol {
+class HomeService: HomeServiceProtocol, Loggable {
     
     // MARK: - Properties
     private var mockItems: [HomeItem] = []
@@ -35,11 +34,11 @@ class HomeService: HomeServiceProtocol {
                 return
             }
             
-            SwiftyBeaver.info("开始获取首页数据")
+            self.log.info("开始获取首页数据")
             
             // 模拟网络延迟
             DispatchQueue.global().asyncAfter(deadline: .now() + 1.0) {
-                SwiftyBeaver.info("首页数据获取成功，共 \(self.mockItems.count) 项")
+                self.log.info("首页数据获取成功，共 \(self.mockItems.count) 项")
                 promise(.success(self.mockItems))
             }
         }
@@ -53,15 +52,15 @@ class HomeService: HomeServiceProtocol {
                 return
             }
             
-            SwiftyBeaver.info("获取详情数据: \(id)")
+            self.log.info("获取详情数据: \(id)")
             
             // 模拟网络延迟
             DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
                 if let item = self.mockItems.first(where: { $0.id == id }) {
-                    SwiftyBeaver.info("详情数据获取成功")
+                    self.log.info("详情数据获取成功")
                     promise(.success(item))
                 } else {
-                    SwiftyBeaver.error("未找到详情数据: \(id)")
+                    self.log.error("未找到详情数据: \(id)")
                     promise(.failure(.loadDataFailed))
                 }
             }
@@ -76,7 +75,7 @@ class HomeService: HomeServiceProtocol {
                 return
             }
             
-            SwiftyBeaver.info("开始刷新首页数据")
+            self.log.info("开始刷新首页数据")
             
             // 模拟网络延迟
             DispatchQueue.global().asyncAfter(deadline: .now() + 1.5) {
@@ -88,7 +87,7 @@ class HomeService: HomeServiceProtocol {
                 )
                 self.mockItems.insert(newItem, at: 0)
                 
-                SwiftyBeaver.info("首页数据刷新成功")
+                self.log.info("首页数据刷新成功")
                 promise(.success(self.mockItems))
             }
         }

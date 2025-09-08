@@ -9,6 +9,42 @@ import Foundation
 import Swinject
 import SwiftyBeaver
 
+// MARK: - Coordinator Factory Protocol
+protocol CoordinatorFactory {
+    func makeAuthCoordinator() -> AuthCoordinator
+    func makeMainCoordinator() -> MainCoordinator
+    func makeCoordinator(for type: CoordinatorType) -> Coordinator
+}
+
+// MARK: - Default Coordinator Factory
+class DefaultCoordinatorFactory: CoordinatorFactory {
+    private let container: Container
+    
+    init(container: Container) {
+        self.container = container
+    }
+    
+    func makeAuthCoordinator() -> AuthCoordinator {
+        let navigationController = UINavigationController()
+        return AuthCoordinator(navigationController: navigationController, container: container)
+    }
+    
+    func makeMainCoordinator() -> MainCoordinator {
+        let tabBarController = UITabBarController()
+        return MainCoordinator(tabBarController: tabBarController, container: container)
+    }
+    
+    func makeCoordinator(for type: CoordinatorType) -> Coordinator {
+        switch type {
+        case .deviceControl:
+            let navigationController = UINavigationController()
+            return DeviceControlCoordinator(navigationController: navigationController, container: container)
+        default:
+            fatalError("Unsupported coordinator type: \(type)")
+        }
+    }
+}
+
 // MARK: - DIContainer Manager Protocol
 protocol DIContainerManager {
     var container: Container { get }
@@ -18,7 +54,7 @@ protocol DIContainerManager {
 }
 
 // MARK: - DIContainer Manager Implementation
-final class DIContainerManagerImpl: DIContainerManager {
+final class DIContainerManagerImpl: DIContainerManager, Loggable {
     
     // MARK: - Properties
     private(set) var container = Container()
@@ -32,10 +68,10 @@ final class DIContainerManagerImpl: DIContainerManager {
     
     // MARK: - Setup
     private func setupDependencies() {
-        AppLogger.di("设置依赖注入容器...")
+        log.di("设置依赖注入容器...")
         registerCoreDependencies()
         registerModuleDependencies()
-        AppLogger.di("依赖注入容器设置完成")
+        log.di("依赖注入容器设置完成")
     }
     
     // MARK: - Core Dependencies Registration
@@ -70,6 +106,8 @@ final class DIContainerManagerImpl: DIContainerManager {
         registerHomeModule()
         registerProfileModule()
         registerSettingsModule()
+        registerDeviceProvisioningModule()
+        registerDeviceControlModule()
     }
     
     private func registerAuthModule() {
@@ -139,6 +177,20 @@ final class DIContainerManagerImpl: DIContainerManager {
         }.inObjectScope(.transient)
     }
     
+    private func registerDeviceProvisioningModule() {
+        // 注册设备配网模块
+        container.register(DeviceProvisioningModule.self) { resolver in
+            return DeviceProvisioningModule(container: resolver as! Container)
+        }.inObjectScope(.container)
+    }
+    
+    private func registerDeviceControlModule() {
+        // 注册设备控制模块
+        container.register(DeviceControlModule.self) { resolver in
+            return DeviceControlModule(container: resolver as! Container)
+        }.inObjectScope(.container)
+    }
+    
     // MARK: - Dependency Resolution
     func resolve<T>(_ type: T.Type) -> T? {
         return container.resolve(type)
@@ -206,6 +258,14 @@ class CoordinatorFactoryImpl: CoordinatorFactory {
         case .profile:
             let navigationController = UINavigationController()
             return ProfileCoordinator(navigationController: navigationController, container: container)
+            
+        case .deviceProvisioning:
+            let navigationController = UINavigationController()
+            return DeviceProvisioningCoordinator(navigationController: navigationController, container: container)
+            
+        case .deviceControl:
+            let navigationController = UINavigationController()
+            return DeviceControlCoordinator(navigationController: navigationController, container: container)
         }
     }
     
@@ -238,6 +298,10 @@ class ModuleFactoryImpl: ModuleFactory {
             return ProfileModule(container: container)
         case .settings:
             return SettingsModule(container: container)
+        case .deviceProvisioning:
+            return DeviceProvisioningModule(container: container)
+        case .deviceControl:
+            return DeviceControlModule(container: container)
         }
     }
 }

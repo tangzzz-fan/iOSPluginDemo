@@ -63,6 +63,26 @@ struct Logger {
         log(level: .fatal, message: message, file: file, line: line, function: function)
     }
     
+    func auth(_ message: String, file: String = #file, line: Int = #line, function: String = #function) {
+        Logger(context: "Auth").info(message, file: file, line: line, function: function)
+    }
+    
+    func navigation(_ message: String, file: String = #file, line: Int = #line, function: String = #function) {
+        Logger(context: "Navigation").info(message, file: file, line: line, function: function)
+    }
+    
+    func network(_ message: String, file: String = #file, line: Int = #line, function: String = #function) {
+        Logger(context: "Network").info(message, file: file, line: line, function: function)
+    }
+    
+    func ui(_ message: String, file: String = #file, line: Int = #line, function: String = #function) {
+        Logger(context: "UI").info(message, file: file, line: line, function: function)
+    }
+    
+    func di(_ message: String, file: String = #file, line: Int = #line, function: String = #function) {
+        Logger(context: "DI").info(message, file: file, line: line, function: function)
+    }
+    
     // MARK: - Private Methods
     
     private func log(level: LogLevel, message: String, file: String, line: Int, function: String) {
@@ -92,89 +112,5 @@ struct Logger {
 extension Loggable {
     var log: Logger {
         return Logger(context: String(describing: type(of: self)))
-    }
-}
-
-// MARK: - Global Logger
-struct AppLogger {
-    
-    static let shared = AppLogger()
-    
-    private init() {}
-    
-    // MARK: - Convenience Methods
-    
-    static func debug(_ message: String, file: String = #file, line: Int = #line, function: String = #function) {
-        shared.log.debug(message, file: file, line: line, function: function)
-    }
-    
-    static func info(_ message: String, file: String = #file, line: Int = #line, function: String = #function) {
-        shared.log.info(message, file: file, line: line, function: function)
-    }
-    
-    static func warning(_ message: String, file: String = #file, line: Int = #line, function: String = #function) {
-        shared.log.warning(message, file: file, line: line, function: function)
-    }
-    
-    static func error(_ message: String, file: String = #file, line: Int = #line, function: String = #function) {
-        shared.log.error(message, file: file, line: line, function: function)
-    }
-    
-    static func fatal(_ message: String, file: String = #file, line: Int = #line, function: String = #function) {
-        shared.log.fatal(message, file: file, line: line, function: function)
-    }
-    
-    // MARK: - Context-specific Loggers
-    
-    static func auth(_ message: String, file: String = #file, line: Int = #line, function: String = #function) {
-        Logger(context: "Auth").info(message, file: file, line: line, function: function)
-    }
-    
-    static func navigation(_ message: String, file: String = #file, line: Int = #line, function: String = #function) {
-        Logger(context: "Navigation").info(message, file: file, line: line, function: function)
-    }
-    
-    static func network(_ message: String, file: String = #file, line: Int = #line, function: String = #function) {
-        Logger(context: "Network").info(message, file: file, line: line, function: function)
-    }
-    
-    static func ui(_ message: String, file: String = #file, line: Int = #line, function: String = #function) {
-        Logger(context: "UI").info(message, file: file, line: line, function: function)
-    }
-    
-    static func di(_ message: String, file: String = #file, line: Int = #line, function: String = #function) {
-        Logger(context: "DI").info(message, file: file, line: line, function: function)
-    }
-    
-    private var log: Logger {
-        return Logger(context: "App")
-    }
-}
-
-// MARK: - Logger Configuration
-extension AppLogger {
-    
-    static func configure() {
-        // 配置 SwiftyBeaver
-        let console = ConsoleDestination()
-        console.format = "$DHH:mm:ss.SSS$d $C$L$c $N.$F:$l - $M"
-        console.levelColor.debug = "🔍 "
-        console.levelColor.info = "ℹ️ "
-        console.levelColor.warning = "⚠️ "
-        console.levelColor.error = "❌ "
-        
-        let file = FileDestination()
-        file.logFileURL = getDocumentsDirectory().appendingPathComponent("app.log")
-        file.format = "$Dyyyy-MM-dd HH:mm:ss.SSS$d [$L] $N.$F:$l - $M"
-        
-        SwiftyBeaver.addDestination(console)
-        SwiftyBeaver.addDestination(file)
-        
-        AppLogger.info("Logger configured successfully")
-    }
-    
-    private static func getDocumentsDirectory() -> URL {
-        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-        return paths[0]
     }
 }

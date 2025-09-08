@@ -78,6 +78,7 @@ open iOSPluginDemo.xcworkspace
 - 🏠 **首页展示** - 主要内容展示和详情页面
 - 👤 **个人资料** - 用户信息管理
 - ⚙️ **设置模块** - 应用配置和偏好设置
+- 🤖 **设备配网** - 智能家居设备配网（蓝牙/WiFi/二维码）
 
 ### 模块架构
 ```
@@ -86,6 +87,7 @@ iOSPluginDemo/
 ├── Home/           # 首页模块
 ├── Profile/        # 个人资料模块
 ├── Settings/       # 设置模块
+├── DeviceProvisioning/ # 设备配网模块
 ├── Main/           # 主协调器
 └── Core/           # 核心组件
     ├── DIContainer.swift       # 依赖注入容器
@@ -263,6 +265,15 @@ MainCoordinator (根协调器)
 - `*ViewModel.swift` - 视图模型
 - `*ViewController.swift` - 视图控制器
 - `*Service.swift` - 业务服务（如需要）
+
+### 设备配网模块
+设备配网模块为智能家居设备提供了完整的配网解决方案：
+- **状态机模式** - 使用状态机管理复杂的配网流程
+- **三种配网方式** - 支持蓝牙、WiFi和二维码配网
+- **SOLID原则** - 遵循面向对象设计原则
+- **响应式编程** - 基于Combine框架的响应式设计
+
+详细信息请查看 [DeviceProvisioning/README.md](iOSPluginDemo/DeviceProvisioning/README.md)
 
 ## 🔍 调试和问题排查
 

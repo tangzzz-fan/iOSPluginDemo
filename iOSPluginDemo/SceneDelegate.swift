@@ -6,9 +6,8 @@
 //
 
 import UIKit
-import SwiftyBeaver
 
-class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+class SceneDelegate: UIResponder, UIWindowSceneDelegate, Loggable {
 
     var window: UIWindow?
     private var mainCoordinator: MainCoordinator?
@@ -31,7 +30,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.rootViewController = navigationController
         window?.makeKeyAndVisible()
         
-        SwiftyBeaver.info("Scene connected")
+        log.info("Scene connected")
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {

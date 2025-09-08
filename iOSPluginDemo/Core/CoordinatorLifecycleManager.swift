@@ -8,10 +8,9 @@
 import UIKit
 import Combine
 import Swinject
-import SwiftyBeaver
 
 // MARK: - Coordinator Lifecycle Manager Protocol
-protocol CoordinatorLifecycleManager: AnyObject {
+protocol CoordinatorLifecycleManager: AnyObject, Loggable {
     func createCoordinator<T: Coordinator>(_ type: T.Type, with container: Container) -> T
     func retainCoordinator(_ coordinator: Coordinator)
     func releaseCoordinator(_ coordinator: Coordinator)
@@ -21,7 +20,7 @@ protocol CoordinatorLifecycleManager: AnyObject {
 }
 
 // MARK: - Coordinator Registry
-final class CoordinatorRegistry: CoordinatorLifecycleManager {
+final class CoordinatorRegistry: CoordinatorLifecycleManager, Loggable {
     
     // MARK: - Properties
     private var activeCoordinators: Set<WeakCoordinatorWrapper> = []
@@ -36,11 +35,11 @@ final class CoordinatorRegistry: CoordinatorLifecycleManager {
     
     func createCoordinator<T: Coordinator>(_ type: T.Type, with container: Container) -> T {
         return queue.sync(flags: .barrier) {
-            SwiftyBeaver.info("Creating coordinator of type: \(type)")
+            log.info("Creating coordinator of type: \(type)")
             
             // 检查是否已存在同类型的活跃 Coordinator
             if let existingCoordinator = findExistingCoordinator(of: type) {
-                SwiftyBeaver.warning("Reusing existing coordinator of type: \(type)")
+                log.warning("Reusing existing coordinator of type: \(type)")
                 return existingCoordinator
             }
             
@@ -64,7 +63,7 @@ final class CoordinatorRegistry: CoordinatorLifecycleManager {
             let wrapper = WeakCoordinatorWrapper(coordinator: coordinator)
             self.activeCoordinators.insert(wrapper)
             
-            SwiftyBeaver.info("Retained coordinator: \(type(of: coordinator))")
+            self.log.info("Retained coordinator: \(type(of: coordinator))")
             self.logActiveCoordinators()
         }
     }
@@ -76,7 +75,7 @@ final class CoordinatorRegistry: CoordinatorLifecycleManager {
             let wrapper = WeakCoordinatorWrapper(coordinator: coordinator)
             self.activeCoordinators.remove(wrapper)
             
-            SwiftyBeaver.info("Released coordinator: \(type(of: coordinator))")
+            self.log.info("Released coordinator: \(type(of: coordinator))")
             self.recordReleaseMetrics(for: coordinator)
             self.logActiveCoordinators()
         }
@@ -86,7 +85,7 @@ final class CoordinatorRegistry: CoordinatorLifecycleManager {
         queue.async(flags: .barrier) { [weak self] in
             guard let self = self else { return }
             
-            SwiftyBeaver.info("Cleaning up all coordinators")
+            self.log.info("Cleaning up all coordinators")
             
             // 清理所有 Coordinator
             for wrapper in self.activeCoordinators {
@@ -98,7 +97,7 @@ final class CoordinatorRegistry: CoordinatorLifecycleManager {
             self.activeCoordinators.removeAll()
             self.coordinatorMetrics.removeAll()
             
-            SwiftyBeaver.info("All coordinators cleaned up")
+            self.log.info("All coordinators cleaned up")
         }
     }
     
@@ -159,7 +158,7 @@ final class CoordinatorRegistry: CoordinatorLifecycleManager {
             coordinatorMetrics[typeName] = metrics
             
             let lifetime = metrics.lifetime
-            SwiftyBeaver.info("Coordinator \(typeName) lifetime: \(lifetime) seconds")
+            log.info("Coordinator \(typeName) lifetime: \(lifetime) seconds")
         }
     }
     
@@ -174,8 +173,8 @@ final class CoordinatorRegistry: CoordinatorLifecycleManager {
             wrapper.coordinator.map { String(describing: type(of: $0)) }
         }
         
-        SwiftyBeaver.info("Active coordinators count: \(activeCount)")
-        SwiftyBeaver.info("Active coordinator types: \(activeTypes)")
+        log.info("Active coordinators count: \(activeCount)")
+        log.info("Active coordinator types: \(activeTypes)")
     }
 }
 
@@ -214,7 +213,7 @@ private struct CoordinatorMetrics {
 }
 
 // MARK: - Enhanced Coordinator Protocol
-protocol EnhancedCoordinator: Coordinator {
+protocol EnhancedCoordinator: Coordinator, Loggable {
     var coordinatorId: UUID { get }
     var creationTime: Date { get }
     var isActive: Bool { get set }
@@ -224,7 +223,7 @@ protocol EnhancedCoordinator: Coordinator {
 }
 
 // MARK: - Enhanced Coordinator Base Class
-class BaseEnhancedCoordinator: NSObject, EnhancedCoordinator {
+class BaseEnhancedCoordinator: NSObject, EnhancedCoordinator, Loggable {
     
     // MARK: - Coordinator Protocol
     var childCoordinators: [Coordinator] = []
@@ -239,26 +238,26 @@ class BaseEnhancedCoordinator: NSObject, EnhancedCoordinator {
     init(navigationController: UINavigationController) {
         self.navigationController = navigationController
         super.init()
-        SwiftyBeaver.info("Created coordinator: \(type(of: self)) with ID: \(coordinatorId)")
+        log.info("Created coordinator: \(type(of: self)) with ID: \(coordinatorId)")
     }
     
     // MARK: - Coordinator Methods
     func start() {
         isActive = true
-        SwiftyBeaver.info("Started coordinator: \(type(of: self))")
+        log.info("Started coordinator: \(type(of: self))")
     }
     
     func finish() {
         isActive = false
         cleanup()
         childCoordinators.removeAll()
-        SwiftyBeaver.info("Finished coordinator: \(type(of: self))")
+        log.info("Finished coordinator: \(type(of: self))")
     }
     
     // MARK: - Enhanced Methods
     func cleanup() {
         // 子类重写此方法进行特定清理
-        SwiftyBeaver.info("Cleaning up coordinator: \(type(of: self))")
+        log.info("Cleaning up coordinator: \(type(of: self))")
     }
     
     func reportMemoryUsage() -> Int {
@@ -266,6 +265,6 @@ class BaseEnhancedCoordinator: NSObject, EnhancedCoordinator {
     }
     
     deinit {
-        SwiftyBeaver.info("Deinitializing coordinator: \(type(of: self))")
+        log.info("Deinitializing coordinator: \(type(of: self))")
     }
 }

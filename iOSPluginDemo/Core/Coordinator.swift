@@ -43,5 +43,7 @@ enum CoordinatorType {
     case home
     case profile
     case auth
+    case deviceProvisioning
+    case deviceControl
     // 添加更多模块的 coordinator 类型
 } 

@@ -81,6 +81,7 @@ class RegistrationViewController: UIViewController, ViewControllable, ViewContro
         view.addSubview(confirmPasswordTextField)
         view.addSubview(registerButton)
         
+        // 使用 Anchorage 约束
         nameTextField.topAnchor == view.safeAreaLayoutGuide.topAnchor + 60
         nameTextField.leadingAnchor == view.leadingAnchor + 20
         nameTextField.trailingAnchor == view.trailingAnchor - 20
@@ -163,4 +164,4 @@ extension RegistrationViewController: UITextFieldDelegate {
         }
         return true
     }
-} 
+}

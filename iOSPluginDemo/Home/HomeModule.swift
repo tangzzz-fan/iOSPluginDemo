@@ -37,4 +37,4 @@ class HomeModule: Module {
             return HomeCoordinator(navigationController: navigationController, container: container)
         }.inObjectScope(.transient)
     }
-} 
+}

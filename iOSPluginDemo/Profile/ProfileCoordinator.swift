@@ -29,4 +29,4 @@ class ProfileCoordinator: NSObject, Coordinator, CoordinatorLifecycle, ModuleCoo
     func finish() {
         childCoordinators.removeAll()
     }
-} 
+}

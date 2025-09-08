@@ -25,6 +25,8 @@ enum ModuleType: String, CaseIterable {
     case profile = "Profile"
     case settings = "Settings"
     case auth = "Auth"
+    case deviceProvisioning = "DeviceProvisioning"
+    case deviceControl = "DeviceControl"
     // 添加更多模块类型
 }
 
@@ -46,6 +48,7 @@ enum ViewControllerType {
     case auth
     case forgotPassword
     case registration
+    case deviceProvisioning
     // 添加更多视图控制器类型
 }
 
@@ -58,5 +61,6 @@ enum ViewModelType {
     case home
     case profile
     case settings
+    case deviceProvisioning
     // 添加更多视图模型类型
 } 

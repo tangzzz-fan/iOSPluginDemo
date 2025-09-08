@@ -139,4 +139,4 @@ class ProfileViewController: UIViewController, ViewControllable, ViewControllerH
     func setupNavigationBar() {
         configureNavigationBar(title: "个人资料", prefersLargeTitles: true, largeTitleDisplayMode: .always)
     }
-} 
+}
